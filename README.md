@@ -180,11 +180,13 @@ After deploying, put the live address into the Supabase authentication URL setti
 
 ## Pricing
 
+Nothing is charged today. The service runs as a free launch: every feature is open to every business, with no limits and no payment integration. The table below is the intended business model for later.
+
 | Plan | Price | Includes |
 |---|---|---|
-| Start | Free | Up to 50 customers, QR code, cashback, finances |
-| Business | 7 990 ₸ / month | Unlimited customers, promotions, analytics, export |
-| Network | 19 990 ₸ / month | Up to 5 locations, a shared customer base |
+| Start | Free forever | Up to 50 customers, QR code, cashback, finances |
+| Business | 6 990 ₸ / month | Unlimited customers, promotions, analytics, export |
+| Network | 13 990 ₸ / month | Up to 5 locations, a shared customer base |
 
 ## Credits
 
