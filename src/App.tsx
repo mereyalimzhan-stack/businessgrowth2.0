@@ -24,12 +24,7 @@ import {
   readJoinToken,
   storage,
 } from "./utils";
-import {
-  AuthScreen,
-  JoinScreen,
-  NewPasswordScreen,
-  OnboardingWizard,
-} from "./screens/Auth";
+import { AuthScreen, JoinScreen, NewPasswordScreen, OnboardingWizard } from "./screens/Auth";
 import ClientPortal from "./screens/ClientPortal";
 import AdminPanel from "./screens/Admin";
 import Dashboard from "./screens/Dashboard";
@@ -38,6 +33,7 @@ import { Aurora, Brand, Splash, TiltCard, Toast } from "./components/ui";
 import type { Notice } from "./components/ui";
 import {
   ArrowRight,
+  CheckCircle2,
   BarChart3,
   Bell,
   Check,
@@ -56,6 +52,12 @@ import {
 } from "lucide-react";
 
 const PENDING_JOIN_KEY = "bg_pending_join";
+
+const URL_AUTH = (() => {
+  const params = new URLSearchParams((window.location.hash || "").replace(/^#/, "") + "&" + window.location.search.replace(/^\?/, ""));
+  return { type: params.get("type"), error: params.get("error_description") };
+})();
+const CAME_FROM_CONFIRM = URL_AUTH.type === "signup" || URL_AUTH.type === "email";
 const onboardedKey = (id: string) => `bg_onboarded_${id}`;
 
 export default function App() {
@@ -68,28 +70,20 @@ export default function App() {
   const [clients, setClients] = useState<Client[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [notifications, setNotifications] = useState<BusinessNotification[]>(
-    []
-  );
+  const [notifications, setNotifications] = useState<BusinessNotification[]>([]);
   const [page, setPage] = useState<Page>("dashboard");
   const [notice, setNotice] = useState<Notice | null>(null);
   const [joinToken, setJoinToken] = useState<string | null>(null);
   const [recovery, setRecovery] = useState(false);
-  const [authMode, setAuthMode] = useState<"about" | "login" | "register">(
-    "login"
-  );
+  const [authMode, setAuthMode] = useState<"about" | "login" | "register">("login");
   const [onboarding, setOnboarding] = useState(false);
   const [portalVersion, setPortalVersion] = useState(0);
   const loadedFor = useRef<string | null>(null);
+  const [confirmedScreen, setConfirmedScreen] = useState(CAME_FROM_CONFIRM);
+  const skipSignIn = useRef(CAME_FROM_CONFIRM);
 
-  const fail = useCallback(
-    (err: any) => setNotice({ kind: "error", text: errorText(err) }),
-    []
-  );
-  const ok = useCallback(
-    (text: string) => setNotice({ kind: "success", text }),
-    []
-  );
+  const fail = useCallback((err: any) => setNotice({ kind: "error", text: errorText(err) }), []);
+  const ok = useCallback((text: string) => setNotice({ kind: "success", text }), []);
 
   const resetData = useCallback(() => {
     loadedFor.current = null;
@@ -104,27 +98,10 @@ export default function App() {
 
   const loadCompanyData = useCallback(async (companyId: string) => {
     const [c, t, k, n] = await Promise.all([
-      supabase
-        .from("clients")
-        .select("*")
-        .eq("company_id", companyId)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("transactions")
-        .select("*")
-        .eq("company_id", companyId)
-        .order("date", { ascending: false })
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("campaigns")
-        .select("*")
-        .eq("company_id", companyId)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("business_notifications")
-        .select("*")
-        .eq("company_id", companyId)
-        .order("created_at", { ascending: false }),
+      supabase.from("clients").select("*").eq("company_id", companyId).order("created_at", { ascending: false }),
+      supabase.from("transactions").select("*").eq("company_id", companyId).order("date", { ascending: false }).order("created_at", { ascending: false }),
+      supabase.from("campaigns").select("*").eq("company_id", companyId).order("created_at", { ascending: false }),
+      supabase.from("business_notifications").select("*").eq("company_id", companyId).order("created_at", { ascending: false }),
     ]);
     const firstError = c.error || t.error || k.error || n.error;
     if (firstError) setNotice({ kind: "error", text: errorText(firstError) });
@@ -145,17 +122,9 @@ export default function App() {
       setProfileLoading(true);
       setProfileError("");
 
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", s.user.id)
-        .maybeSingle();
+      const { data, error } = await supabase.from("profiles").select("*").eq("id", s.user.id).maybeSingle();
       if (error || !data) {
-        setProfileError(
-          error
-            ? errorText(error)
-            : "Профиль не найден. Проверьте, что SQL-скрипт выполнен в Supabase."
-        );
+        setProfileError(error ? errorText(error) : "Профиль не найден. Проверьте, что SQL-скрипт выполнен в Supabase.");
         setProfileLoading(false);
         return;
       }
@@ -163,13 +132,8 @@ export default function App() {
       setProfile(p);
 
       if (p.role === "business") {
-        const { data: company, error: companyError } = await supabase
-          .from("companies")
-          .select("*")
-          .eq("id", p.id)
-          .maybeSingle();
-        if (companyError)
-          setNotice({ kind: "error", text: errorText(companyError) });
+        const { data: company, error: companyError } = await supabase.from("companies").select("*").eq("id", p.id).maybeSingle();
+        if (companyError) setNotice({ kind: "error", text: errorText(companyError) });
         setBusiness(mapBusiness(p, company));
         await loadCompanyData(p.id);
         if (!storage.get(onboardedKey(p.id))) setOnboarding(true);
@@ -178,28 +142,13 @@ export default function App() {
       const pending = storage.get(PENDING_JOIN_KEY);
       if (pending) {
         if (p.role === "client") {
-          const { data: joined, error: joinError } = await supabase.rpc(
-            "join_company",
-            { p_qr_token: pending }
-          );
-          if (joinError)
-            setNotice({ kind: "error", text: errorText(joinError) });
-          else if (joined?.already)
-            setNotice({
-              kind: "success",
-              text: `Вы уже участник «${joined.company_name}»`,
-            });
-          else if (joined)
-            setNotice({
-              kind: "success",
-              text: `Готово! Вы в программе «${joined.company_name}»`,
-            });
+          const { data: joined, error: joinError } = await supabase.rpc("join_company", { p_qr_token: pending });
+          if (joinError) setNotice({ kind: "error", text: errorText(joinError) });
+          else if (joined?.already) setNotice({ kind: "success", text: `Вы уже участник «${joined.company_name}»` });
+          else if (joined) setNotice({ kind: "success", text: `Готово! Вы в программе «${joined.company_name}»` });
           setPortalVersion((v) => v + 1);
         } else {
-          setNotice({
-            kind: "error",
-            text: "Вы вошли как бизнес. Чтобы вступить в программу, войдите аккаунтом клиента.",
-          });
+          setNotice({ kind: "error", text: "Вы вошли как бизнес. Чтобы вступить в программу, войдите аккаунтом клиента." });
         }
         storage.remove(PENDING_JOIN_KEY);
         setJoinToken(null);
@@ -219,23 +168,32 @@ export default function App() {
     }
     setJoinToken(token || storage.get(PENDING_JOIN_KEY));
 
+    if (URL_AUTH.error) {
+      setNotice({ kind: "error", text: "Ссылка устарела или уже использована. Войдите или запросите письмо ещё раз." });
+      clearUrl();
+    }
+
     supabase.auth.getSession().then(async ({ data }) => {
       if (!alive) return;
+      if (skipSignIn.current) {
+        clearUrl();
+        if (data.session) await supabase.auth.signOut();
+        skipSignIn.current = false;
+        setSession(null);
+        setBooting(false);
+        return;
+      }
       setSession(data.session);
       await loadAccount(data.session);
       if (alive) setBooting(false);
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, next) => {
-      if (!alive || event === "INITIAL_SESSION") return;
+      if (!alive || event === "INITIAL_SESSION" || skipSignIn.current) return;
       if (event === "PASSWORD_RECOVERY") setRecovery(true);
       if (event === "SIGNED_OUT") setRecovery(false);
       setSession(next);
-      if (
-        event === "SIGNED_IN" ||
-        event === "SIGNED_OUT" ||
-        event === "USER_UPDATED"
-      ) {
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
         setTimeout(() => loadAccount(next), 0);
       }
       if (window.location.hash.includes("access_token")) clearUrl();
@@ -258,17 +216,10 @@ export default function App() {
   async function updateBusiness(updated: BusinessUser) {
     if (!business) return;
     const [p, c] = await Promise.all([
-      supabase
-        .from("profiles")
-        .update({ full_name: updated.ownerName, phone: updated.phone })
-        .eq("id", business.id),
+      supabase.from("profiles").update({ full_name: updated.ownerName, phone: updated.phone }).eq("id", business.id),
       supabase
         .from("companies")
-        .update({
-          company_name: updated.companyName,
-          business_type: updated.businessType,
-          cashback_rate: updated.cashbackRate,
-        })
+        .update({ company_name: updated.companyName, business_type: updated.businessType, cashback_rate: updated.cashbackRate })
         .eq("id", business.id),
     ]);
     if (p.error || c.error) return fail(p.error || c.error);
@@ -321,23 +272,14 @@ export default function App() {
     if (error) return fail(error);
     setCampaigns((prev) => [mapCampaign(data), ...prev]);
     const reach = clients.filter((c) => c.userId).length;
-    ok(
-      reach > 0
-        ? `Акция запущена — уведомили клиентов: ${reach}`
-        : "Акция запущена"
-    );
+    ok(reach > 0 ? `Акция запущена — уведомили клиентов: ${reach}` : "Акция запущена");
   }
 
   async function toggleCampaign(c: Campaign) {
     const status = c.status === "Активна" ? "Завершена" : "Активна";
-    const { error } = await supabase
-      .from("campaigns")
-      .update({ status })
-      .eq("id", c.id);
+    const { error } = await supabase.from("campaigns").update({ status }).eq("id", c.id);
     if (error) return fail(error);
-    setCampaigns((prev) =>
-      prev.map((x) => (x.id === c.id ? { ...x, status } : x))
-    );
+    setCampaigns((prev) => prev.map((x) => (x.id === c.id ? { ...x, status } : x)));
   }
 
   async function deleteCampaign(id: string) {
@@ -350,12 +292,7 @@ export default function App() {
     if (!business) return;
     const { data, error } = await supabase
       .from("clients")
-      .insert({
-        company_id: business.id,
-        name: d.name.trim(),
-        phone: d.phone.trim(),
-        email: d.email.trim() || null,
-      })
+      .insert({ company_id: business.id, name: d.name.trim(), phone: d.phone.trim(), email: d.email.trim() || null })
       .select()
       .single();
     if (error) return fail(error);
@@ -370,46 +307,24 @@ export default function App() {
   }
 
   async function addPurchase(client: Client, amount: number) {
-    const { data, error } = await supabase.rpc("record_purchase", {
-      p_client_id: client.id,
-      p_amount: amount,
-    });
+    const { data, error } = await supabase.rpc("record_purchase", { p_client_id: client.id, p_amount: amount });
     if (error) return fail(error);
-    if (data?.client)
-      setClients((prev) =>
-        prev.map((x) => (x.id === client.id ? mapClient(data.client) : x))
-      );
-    if (data?.transaction)
-      setTransactions((prev) => [mapTransaction(data.transaction), ...prev]);
-    ok(
-      `Покупка проведена. Начислено ${Number(data?.bonus || 0).toLocaleString(
-        "ru-RU"
-      )} ₸ бонусов`
-    );
+    if (data?.client) setClients((prev) => prev.map((x) => (x.id === client.id ? mapClient(data.client) : x)));
+    if (data?.transaction) setTransactions((prev) => [mapTransaction(data.transaction), ...prev]);
+    ok(`Покупка проведена. Начислено ${Number(data?.bonus || 0).toLocaleString("ru-RU")} ₸ бонусов`);
   }
 
   async function redeemBonuses(client: Client, amount: number) {
-    const { data, error } = await supabase.rpc("redeem_bonuses", {
-      p_client_id: client.id,
-      p_amount: amount,
-    });
+    const { data, error } = await supabase.rpc("redeem_bonuses", { p_client_id: client.id, p_amount: amount });
     if (error) return fail(error);
-    if (data)
-      setClients((prev) =>
-        prev.map((x) => (x.id === client.id ? mapClient(data) : x))
-      );
+    if (data) setClients((prev) => prev.map((x) => (x.id === client.id ? mapClient(data) : x)));
     ok("Бонусы списаны");
   }
 
   async function markNotificationRead(id: string) {
-    const { error } = await supabase
-      .from("business_notifications")
-      .update({ is_read: true })
-      .eq("id", id);
+    const { error } = await supabase.from("business_notifications").update({ is_read: true }).eq("id", id);
     if (error) return fail(error);
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-    );
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
   }
 
   async function markAllRead() {
@@ -471,15 +386,34 @@ export default function App() {
       );
     }
 
+    if (!session && confirmedScreen) {
+      return (
+        <div className="center-page">
+          <div className="auth-card glass narrow-card">
+            <Brand subtitle="Программа лояльности" />
+            <div className="auth-step" style={{ textAlign: "center" }}>
+              <div className="mail-badge" style={{ margin: "0 auto 18px", color: "#0b0d06", background: "linear-gradient(135deg, #e7ff7a, #d4ff3f 40%, #34d399)" }}>
+                <CheckCircle2 size={28} />
+              </div>
+              <h1 className="auth-title">Почта подтверждена!</h1>
+              <p className="auth-lead">Верификация завершена. Теперь вы можете войти в аккаунт со своим email и паролем.</p>
+              <button
+                className="btn btn-primary btn-block btn-lg"
+                onClick={() => {
+                  setConfirmedScreen(false);
+                  setAuthMode("login");
+                }}
+              >
+                Войти <ArrowRight size={18} />
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     if (!session) {
-      if (joinToken)
-        return (
-          <JoinScreen
-            token={joinToken}
-            onRecovery={setRecovery}
-            onCancel={cancelJoin}
-          />
-        );
+      if (joinToken) return <JoinScreen token={joinToken} onRecovery={setRecovery} onCancel={cancelJoin} />;
       if (authMode === "about") {
         return (
           <Landing
@@ -494,17 +428,10 @@ export default function App() {
           />
         );
       }
-      return (
-        <AuthScreen
-          key={authMode}
-          defaultMode={authMode}
-          onRecovery={setRecovery}
-          onAbout={() => {
+      return <AuthScreen key={authMode} defaultMode={authMode} onRecovery={setRecovery} onAbout={() => {
             setAuthMode("about");
             window.scrollTo({ top: 0 });
-          }}
-        />
-      );
+          }} />;
     }
 
     if (profileError) {
@@ -517,10 +444,7 @@ export default function App() {
               <button className="btn btn-secondary grow" onClick={logout}>
                 Выйти
               </button>
-              <button
-                className="btn btn-primary grow"
-                onClick={() => loadAccount(session, true)}
-              >
+              <button className="btn btn-primary grow" onClick={() => loadAccount(session, true)}>
                 Повторить
               </button>
             </div>
@@ -531,25 +455,10 @@ export default function App() {
 
     if (profileLoading || !profile) return <Splash text="Загружаем кабинет…" />;
 
-    if (profile.role === "admin")
-      return (
-        <AdminPanel
-          profile={profile}
-          onLogout={logout}
-          onError={fail}
-          onSuccess={ok}
-        />
-      );
+    if (profile.role === "admin") return <AdminPanel profile={profile} onLogout={logout} onError={fail} onSuccess={ok} />;
 
     if (profile.role === "client") {
-      return (
-        <ClientPortal
-          key={portalVersion}
-          profile={profile}
-          onLogout={logout}
-          onError={fail}
-        />
-      );
+      return <ClientPortal key={portalVersion} profile={profile} onLogout={logout} onError={fail} />;
     }
 
     if (!business) return <Splash text="Загружаем кабинет…" />;
@@ -580,19 +489,7 @@ export default function App() {
 
 const fmt = (n: number) => Math.round(n).toLocaleString("ru-RU");
 
-function Section({
-  id,
-  eyebrow,
-  title,
-  lead,
-  children,
-}: {
-  id: string;
-  eyebrow: string;
-  title: React.ReactNode;
-  lead?: string;
-  children: React.ReactNode;
-}) {
+function Section({ id, eyebrow, title, lead, children }: { id: string; eyebrow: string; title: React.ReactNode; lead?: string; children: React.ReactNode }) {
   return (
     <section className="l-section" id={id}>
       <div className="l-head">
@@ -605,80 +502,22 @@ function Section({
   );
 }
 
-const PLANS: {
-  name: string;
-  price: number;
-  note: string;
-  hot?: boolean;
-  features: string[];
-}[] = [
-  {
-    name: "Старт",
-    price: 0,
-    note: "навсегда",
-    features: [
-      "до 50 клиентов",
-      "QR-код и постер",
-      "кэшбэк и списание бонусов",
-      "учёт доходов и расходов",
-    ],
-  },
-  {
-    name: "Бизнес",
-    price: 7990,
-    note: "в месяц",
-    hot: true,
-    features: [
-      "безлимит клиентов",
-      "акции с уведомлениями клиентам",
-      "аналитика и рекомендации",
-      "экспорт клиентов в Excel",
-      "поддержка в WhatsApp",
-    ],
-  },
-  {
-    name: "Сеть",
-    price: 19990,
-    note: "в месяц",
-    features: [
-      "до 5 точек",
-      "всё из тарифа «Бизнес»",
-      "общая база клиентов сети",
-      "персональный менеджер",
-    ],
-  },
+const PLANS: { name: string; price: number; note: string; hot?: boolean; features: string[] }[] = [
+  { name: "Старт", price: 0, note: "навсегда", features: ["до 50 клиентов", "QR-код и постер", "кэшбэк и списание бонусов", "учёт доходов и расходов"] },
+  { name: "Бизнес", price: 6990, note: "в месяц", hot: true, features: ["безлимит клиентов", "акции с уведомлениями клиентам", "аналитика и рекомендации", "экспорт клиентов в Excel", "поддержка в WhatsApp"] },
+  { name: "Сеть", price: 13990, note: "в месяц", features: ["до 5 точек", "всё из тарифа «Бизнес»", "общая база клиентов сети", "персональный менеджер"] },
 ];
 
 const FAQ = [
-  {
-    q: "Клиенту нужно скачивать приложение?",
-    a: "Нет. Клиент сканирует QR-код камерой телефона и регистрируется в браузере. Свои бонусы он видит на сайте в любое время.",
-  },
-  {
-    q: "Нужно ли оборудование или касса?",
-    a: "Нет. Достаточно распечатать постер с QR-кодом. Покупки проводятся в кабинете с телефона или компьютера.",
-  },
-  {
-    q: "Как клиент тратит бонусы?",
-    a: "Клиент называет на кассе свой код или имя, а вы нажимаете «Списать» и вводите сумму. Бонусы работают только в вашем заведении.",
-  },
-  {
-    q: "Сколько стоит?",
-    a: "Тариф «Старт» бесплатный навсегда. Платные тарифы нужны, когда клиентов становится больше 50 или хочется запускать акции.",
-  },
-  {
-    q: "Можно ли накрутить бонусы?",
-    a: "Нет. Бонусы считает сервер по проценту кэшбэка, который вы задали. Каждая покупка записывается в финансы.",
-  },
+  { q: "Клиенту нужно скачивать приложение?", a: "Нет. Клиент сканирует QR-код камерой телефона и регистрируется в браузере. Свои бонусы он видит на сайте в любое время." },
+  { q: "Как подтвердить почту?", a: "После регистрации на почту придёт письмо. Нажмите в нём ссылку «Confirm your mail» — почта подтвердится. Потом вернитесь на сайт и нажмите «Войти»." },
+  { q: "Нужно ли оборудование или касса?", a: "Нет. Достаточно распечатать постер с QR-кодом. Покупки проводятся в кабинете с телефона или компьютера." },
+  { q: "Как клиент тратит бонусы?", a: "Клиент называет на кассе свой код или имя, а вы нажимаете «Списать» и вводите сумму. Бонусы работают только в вашем заведении." },
+  { q: "Сколько стоит?", a: "Сейчас — нисколько. Сервис работает в режиме бесплатного запуска: все функции открыты без ограничений. Платные тарифы появятся позже, тариф «Старт» останется бесплатным навсегда." },
+  { q: "Можно ли накрутить бонусы?", a: "Нет. Бонусы считает сервер по проценту кэшбэка, который вы задали. Каждая покупка записывается в финансы." },
 ];
 
-function Landing({
-  onLogin,
-  onRegister,
-}: {
-  onLogin: () => void;
-  onRegister: () => void;
-}) {
+function Landing({ onLogin, onRegister }: { onLogin: () => void; onRegister: () => void }) {
   return (
     <div className="landing">
       <header className="l-nav glass">
@@ -693,10 +532,7 @@ function Landing({
           <button className="btn btn-secondary btn-sm" onClick={onLogin}>
             Войти
           </button>
-          <button
-            className="btn btn-primary btn-sm hide-sm"
-            onClick={onRegister}
-          >
+          <button className="btn btn-primary btn-sm hide-sm" onClick={onRegister}>
             Попробовать
           </button>
         </div>
@@ -713,9 +549,8 @@ function Landing({
             <span className="gradient-text">за 5 минут, без приложений</span>
           </h1>
           <p>
-            Клиент сканирует QR-код на кассе, регистрируется за 20 секунд и
-            копит бонусы. Бизнес видит, кто возвращается, запускает акции и
-            считает прибыль — в одном кабинете.
+            Клиент сканирует QR-код на кассе, регистрируется за 20 секунд и копит бонусы. Бизнес видит,
+            кто возвращается, запускает акции и считает прибыль — в одном кабинете.
           </p>
           <div className="row gap wrap">
             <button className="btn btn-primary btn-lg" onClick={onRegister}>
@@ -774,29 +609,12 @@ function Landing({
         </div>
       </section>
 
-      <Section
-        id="product"
-        eyebrow="Как это работает"
-        title="Как работает BusinessGrowth"
-        lead="Три шага — и у бизнеса своя программа лояльности, а у клиента бонусы в телефоне без установки приложений."
-      >
+      <Section id="product" eyebrow="Как это работает" title="Как работает BusinessGrowth" lead="Три шага — и у бизнеса своя программа лояльности, а у клиента бонусы в телефоне без установки приложений.">
         <div className="l-steps">
           {[
-            {
-              icon: <QrCode size={22} />,
-              title: "QR на кассе",
-              text: "Бизнес скачивает готовый постер с QR-кодом и ставит у кассы.",
-            },
-            {
-              icon: <ScanLine size={22} />,
-              title: "Клиент сканирует",
-              text: "Камера телефона → регистрация с подтверждением почты → клиент в программе.",
-            },
-            {
-              icon: <Coins size={22} />,
-              title: "Покупки = бонусы",
-              text: "Кассир жмёт «Покупка», кэшбэк начисляется сам, клиент получает уведомление.",
-            },
+            { icon: <QrCode size={22} />, title: "QR на кассе", text: "Бизнес скачивает готовый постер с QR-кодом и ставит у кассы." },
+            { icon: <ScanLine size={22} />, title: "Клиент сканирует", text: "Камера телефона → регистрация → ссылка в письме подтверждает почту → клиент в программе." },
+            { icon: <Coins size={22} />, title: "Покупки = бонусы", text: "Кассир жмёт «Покупка», кэшбэк начисляется сам, клиент получает уведомление." },
           ].map((s, i) => (
             <div key={s.title} className="l-step">
               <span className="l-step-n">{i + 1}</span>
@@ -808,36 +626,12 @@ function Landing({
         </div>
         <div className="l-grid three mt-lg">
           {[
-            {
-              icon: <Users size={20} />,
-              title: "CRM клиентов",
-              text: "Поиск по имени, телефону и коду. Статусы: новые, активные, VIP.",
-            },
-            {
-              icon: <Megaphone size={20} />,
-              title: "Акции",
-              text: "Запускаете акцию — все участники программы получают уведомление.",
-            },
-            {
-              icon: <BarChart3 size={20} />,
-              title: "Аналитика",
-              text: "Средний чек, доля вернувшихся, спящие клиенты и подсказки, что делать.",
-            },
-            {
-              icon: <Wallet size={20} />,
-              title: "Финансы",
-              text: "Доходы и расходы, прибыль и маржа — без отдельной таблицы.",
-            },
-            {
-              icon: <Bell size={20} />,
-              title: "Кабинет клиента",
-              text: "Клиент видит баланс во всех заведениях, акции и историю начислений.",
-            },
-            {
-              icon: <Crown size={20} />,
-              title: "Защита от накрутки",
-              text: "Бонусы считает сервер, а не касса — начислить лишнее нельзя.",
-            },
+            { icon: <Users size={20} />, title: "CRM клиентов", text: "Поиск по имени, телефону и коду. Статусы: новые, активные, VIP." },
+            { icon: <Megaphone size={20} />, title: "Акции", text: "Запускаете акцию — все участники программы получают уведомление." },
+            { icon: <BarChart3 size={20} />, title: "Аналитика", text: "Средний чек, доля вернувшихся, спящие клиенты и подсказки, что делать." },
+            { icon: <Wallet size={20} />, title: "Финансы", text: "Доходы и расходы, прибыль и маржа — без отдельной таблицы." },
+            { icon: <Bell size={20} />, title: "Кабинет клиента", text: "Клиент видит баланс во всех заведениях, акции и историю начислений." },
+            { icon: <Crown size={20} />, title: "Защита от накрутки", text: "Бонусы считает сервер, а не касса — начислить лишнее нельзя." },
           ].map((f) => (
             <div key={f.title} className="l-card compact">
               <span className="l-icon cyan">{f.icon}</span>
@@ -850,28 +644,12 @@ function Landing({
         </div>
       </Section>
 
-      <Section
-        id="why"
-        eyebrow="Почему мы"
-        title="Просто для бизнеса и клиентов"
-      >
+      <Section id="why" eyebrow="Почему мы" title="Просто для бизнеса и клиентов">
         <div className="l-grid three">
           {[
-            {
-              icon: <Zap size={20} />,
-              title: "Без приложений",
-              text: "Клиенту не нужно ничего скачивать — регистрация прямо в браузере по QR.",
-            },
-            {
-              icon: <Store size={20} />,
-              title: "Для одной точки",
-              text: "Запуск за 5 минут без интеграций и оборудования. Бесплатный старт.",
-            },
-            {
-              icon: <Target size={20} />,
-              title: "Лояльность + финансы",
-              text: "Вы видите не только клиентов, но и сколько на самом деле зарабатываете.",
-            },
+            { icon: <Zap size={20} />, title: "Без приложений", text: "Клиенту не нужно ничего скачивать — регистрация прямо в браузере по QR." },
+            { icon: <Store size={20} />, title: "Для одной точки", text: "Запуск за 5 минут без интеграций и оборудования. Бесплатный старт." },
+            { icon: <Target size={20} />, title: "Лояльность + финансы", text: "Вы видите не только клиентов, но и сколько на самом деле зарабатываете." },
           ].map((a) => (
             <div key={a.title} className="l-card">
               <span className="l-icon lime">{a.icon}</span>
@@ -882,12 +660,7 @@ function Landing({
         </div>
       </Section>
 
-      <Section
-        id="pricing"
-        eyebrow="Тарифы"
-        title="Начните бесплатно"
-        lead="Платите, только когда бизнес растёт. Для ваших клиентов сервис всегда бесплатный."
-      >
+      <Section id="pricing" eyebrow="Тарифы" title="Начните бесплатно" lead="Сейчас все возможности открыты бесплатно. Платные тарифы — планы на будущее, когда сервис выйдет на рынок.">
         <div className="l-plans">
           {PLANS.map((p) => (
             <div key={p.name} className={p.hot ? "l-plan hot" : "l-plan"}>
@@ -904,19 +677,15 @@ function Landing({
                   </li>
                 ))}
               </ul>
-              <button
-                className={
-                  p.hot
-                    ? "btn btn-primary btn-block"
-                    : "btn btn-secondary btn-block"
-                }
-                onClick={onRegister}
-              >
-                {p.price === 0 ? "Начать бесплатно" : "Попробовать 30 дней"}
+              <button className={p.hot ? "btn btn-primary btn-block" : "btn btn-secondary btn-block"} onClick={onRegister}>
+                {p.price === 0 ? "Начать бесплатно" : "Сейчас бесплатно"}
               </button>
             </div>
           ))}
         </div>
+        <p className="muted" style={{ maxWidth: 760, margin: "18px auto 0", textAlign: "center", fontSize: 13, lineHeight: 1.6 }}>
+          Оплата пока не подключена: сервис работает в режиме бесплатного запуска, и все функции доступны каждому бизнесу без ограничений. Тарифы показывают, как сервис будет зарабатывать в дальнейшем.
+        </p>
       </Section>
 
       <Section id="faq" eyebrow="Вопросы" title="Частые вопросы">
@@ -944,9 +713,7 @@ function Landing({
         </div>
         <footer className="l-footer">
           <Brand subtitle="© BusinessGrowth, 2026" />
-          <span className="muted">
-            Программа лояльности для малого бизнеса Казахстана
-          </span>
+          <span className="muted">Программа лояльности для малого бизнеса Казахстана</span>
         </footer>
       </section>
     </div>
