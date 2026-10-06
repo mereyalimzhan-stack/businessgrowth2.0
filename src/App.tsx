@@ -136,7 +136,10 @@ export default function App() {
         if (companyError) setNotice({ kind: "error", text: errorText(companyError) });
         setBusiness(mapBusiness(p, company));
         await loadCompanyData(p.id);
-        if (!storage.get(onboardedKey(p.id))) setOnboarding(true);
+        if (!storage.get(onboardedKey(p.id))) {
+          storage.set(onboardedKey(p.id), "1");
+          setOnboarding(true);
+        }
       }
 
       const pending = storage.get(PENDING_JOIN_KEY);
