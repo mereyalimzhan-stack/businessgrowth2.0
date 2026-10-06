@@ -517,6 +517,8 @@ const PATTERNS: { ru: string; en: string; kk: string }[] = [
   { ru: "{n} программа", en: "{n} programs", kk: "{n} бағдарлама" },
   { ru: "+{a} ₸ бонусами", en: "+{a} ₸ in bonuses", kk: "+{a} ₸ бонус" },
   { ru: "Начислено за покупку на {a} ₸. Баланс: {b} ₸", en: "Credited for a {a} ₸ purchase. Balance: {b} ₸", kk: "{a} ₸ сатып алу үшін есептелді. Баланс: {b} ₸" },
+  { ru: "Покупка: {x}", en: "Purchase: {x}", kk: "Сатып алу: {x}" },
+  { ru: "Покупка · {x}", en: "Purchase · {x}", kk: "Сатып алу · {x}" },
   { ru: "Списано {a} ₸ бонусов", en: "{a} ₸ in bonuses redeemed", kk: "{a} ₸ бонус есептен шығарылды" },
   { ru: "Остаток на балансе: {a} ₸", en: "Remaining balance: {a} ₸", kk: "Баланстағы қалдық: {a} ₸" },
   { ru: "Новая акция: {x}", en: "New promotion: {x}", kk: "Жаңа акция: {x}" },
