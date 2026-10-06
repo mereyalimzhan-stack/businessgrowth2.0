@@ -1,48 +1,12 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import {
-  Bell,
-  CalendarDays,
-  CheckCheck,
-  Coins,
-  Gift,
-  LogOut,
-  Megaphone,
-  QrCode,
-  RefreshCw,
-  ShoppingBag,
-  Store,
-} from "lucide-react";
+import { Bell, CalendarDays, CheckCheck, Coins, Gift, LogOut, Megaphone, QrCode, RefreshCw, ShoppingBag, Store } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import type { Profile } from "../types";
-import {
-  businessLabel,
-  clientCode,
-  daysLeft,
-  formatDate,
-  hue,
-  money,
-  plural,
-} from "../utils";
-import {
-  Avatar,
-  Brand,
-  CountUp,
-  Empty,
-  Modal,
-  Splash,
-  TiltCard,
-} from "../components/ui";
+import { businessLabel, clientCode, daysLeft, formatDate, hue, money, plural } from "../utils";
+import { Avatar, Brand, CountUp, Empty, Modal, Splash, TiltCard } from "../components/ui";
 
-export default function ClientPortal({
-  profile,
-  onLogout,
-  onError,
-}: {
-  profile: Profile;
-  onLogout: () => void;
-  onError: (e: any) => void;
-}) {
+export default function ClientPortal({ profile, onLogout, onError }: { profile: Profile; onLogout: () => void; onError: (e: any) => void }) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -69,28 +33,15 @@ export default function ClientPortal({
   }
 
   async function markRead(id: string) {
-    setData((d: any) => ({
-      ...d,
-      notifications: d.notifications.map((n: any) =>
-        n.id === id ? { ...n, is_read: true } : n
-      ),
-    }));
+    setData((d: any) => ({ ...d, notifications: d.notifications.map((n: any) => (n.id === id ? { ...n, is_read: true } : n)) }));
     await supabase.from("notifications").update({ is_read: true }).eq("id", id);
   }
 
   async function markAll() {
-    const ids = (data?.notifications || [])
-      .filter((n: any) => !n.is_read)
-      .map((n: any) => n.id);
+    const ids = (data?.notifications || []).filter((n: any) => !n.is_read).map((n: any) => n.id);
     if (!ids.length) return;
-    setData((d: any) => ({
-      ...d,
-      notifications: d.notifications.map((n: any) => ({ ...n, is_read: true })),
-    }));
-    await supabase
-      .from("notifications")
-      .update({ is_read: true })
-      .in("id", ids);
+    setData((d: any) => ({ ...d, notifications: d.notifications.map((n: any) => ({ ...n, is_read: true })) }));
+    await supabase.from("notifications").update({ is_read: true }).in("id", ids);
   }
 
   if (loading) return <Splash text="Загружаем ваши бонусы…" />;
@@ -99,10 +50,7 @@ export default function ClientPortal({
   const notifications: any[] = data?.notifications || [];
   const campaigns: any[] = data?.campaigns || [];
   const unread = notifications.filter((n) => !n.is_read).length;
-  const total = memberships.reduce(
-    (s, m) => s + Number(m.bonuses_balance || 0),
-    0
-  );
+  const total = memberships.reduce((s, m) => s + Number(m.bonuses_balance || 0), 0);
   const name = data?.profile?.full_name || profile.fullName;
 
   return (
@@ -110,11 +58,7 @@ export default function ClientPortal({
       <header className="portal-top">
         <Brand subtitle="Мои бонусы" />
         <div className="row gap">
-          <button
-            className="icon-btn ghost"
-            onClick={refresh}
-            aria-label="Обновить"
-          >
+          <button className="icon-btn ghost" onClick={refresh} aria-label="Обновить">
             <RefreshCw size={18} className={refreshing ? "spin" : ""} />
           </button>
           <button className="btn btn-secondary btn-sm" onClick={onLogout}>
@@ -131,15 +75,7 @@ export default function ClientPortal({
               <span className="lcard-company">
                 <Coins size={18} /> BusinessGrowth
               </span>
-              <span className="lcard-vip">
-                {memberships.length}{" "}
-                {plural(
-                  memberships.length,
-                  "программа",
-                  "программы",
-                  "программ"
-                )}
-              </span>
+              <span className="lcard-vip">{memberships.length} {plural(memberships.length, "программа", "программы", "программ")}</span>
             </div>
             <div className="lcard-chip" />
             <div className="lcard-bottom">
@@ -161,37 +97,22 @@ export default function ClientPortal({
           <h1>
             Ваш кэшбэк <span className="gradient-text">копится сам</span>
           </h1>
-          <p className="muted">
-            Называйте на кассе код клиента или имя — бонусы начислятся
-            автоматически, а мы пришлём уведомление.
-          </p>
+          <p className="muted">Называйте на кассе код клиента или имя — бонусы начислятся автоматически, а мы пришлём уведомление.</p>
           <div className="scan-hint">
-            <QrCode size={18} /> Чтобы вступить в новую программу, отсканируйте
-            QR-код на кассе.
+            <QrCode size={18} /> Чтобы вступить в новую программу, отсканируйте QR-код на кассе.
           </div>
         </div>
       </section>
 
       {showCard && (
-        <Modal
-          title={showCard.company_name}
-          subtitle="Покажите этот экран кассиру"
-          onClose={() => setShowCard(null)}
-        >
+        <Modal title={showCard.company_name} subtitle="Покажите этот экран кассиру" onClose={() => setShowCard(null)}>
           <div className="cash-card">
             <div className="qr-frame small">
-              <QRCodeSVG
-                value={clientCode(showCard.id)}
-                size={180}
-                level="M"
-                fgColor="#0b0d1f"
-                style={{ width: "100%", height: "auto", display: "block" }}
-              />
+              <QRCodeSVG value={clientCode(showCard.id)} size={180} level="M" fgColor="#0b0d1f" style={{ width: "100%", height: "auto", display: "block" }} />
             </div>
             <div className="cash-code">#{clientCode(showCard.id)}</div>
             <p className="muted">
-              {name} · бонусов{" "}
-              <b className="lime-text">{money(showCard.bonuses_balance)}</b>
+              {name} · бонусов <b className="lime-text">{money(showCard.bonuses_balance)}</b>
             </p>
           </div>
         </Modal>
@@ -205,35 +126,21 @@ export default function ClientPortal({
           </div>
           {memberships.length === 0 ? (
             <div className="card">
-              <Empty
-                icon={<Store size={22} />}
-                title="Пока нет программ"
-                text="Отсканируйте QR-код в любимой кофейне, салоне или магазине."
-              />
+              <Empty icon={<Store size={22} />} title="Пока нет программ" text="Отсканируйте QR-код в любимой кофейне, салоне или магазине." />
             </div>
           ) : (
             <div className="stack">
               {memberships.map((m, i) => {
                 const h = hue(m.company_name || "x");
                 return (
-                  <article
-                    key={m.id}
-                    className="membership"
-                    style={{ ["--h" as any]: h, animationDelay: `${i * 50}ms` }}
-                  >
+                  <article key={m.id} className="membership" style={{ ["--h" as any]: h, animationDelay: `${i * 50}ms` }}>
                     <div className="membership-top">
-                      <span className="company-logo">
-                        {(m.company_name || "•").charAt(0).toUpperCase()}
-                      </span>
+                      <span className="company-logo">{(m.company_name || "•").charAt(0).toUpperCase()}</span>
                       <div className="grow minw0">
                         <h3 className="ellipsis">{m.company_name}</h3>
-                        <span className="muted">
-                          {businessLabel(m.business_type)}
-                        </span>
+                        <span className="muted">{businessLabel(m.business_type)}</span>
                       </div>
-                      <span className="badge badge-active">
-                        {Number(m.cashback_rate)}% кэшбэк
-                      </span>
+                      <span className="badge badge-active">{Number(m.cashback_rate)}% кэшбэк</span>
                     </div>
                     <div className="membership-balance">
                       <small>Бонусы</small>
@@ -256,16 +163,12 @@ export default function ClientPortal({
                     <div className="row between wrap">
                       {m.last_purchase_date ? (
                         <p className="muted small row gap-xs">
-                          <ShoppingBag size={13} /> Последняя покупка{" "}
-                          {formatDate(m.last_purchase_date)}
+                          <ShoppingBag size={13} /> Последняя покупка {formatDate(m.last_purchase_date)}
                         </p>
                       ) : (
                         <span />
                       )}
-                      <button
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => setShowCard(m)}
-                      >
+                      <button className="btn btn-secondary btn-sm" onClick={() => setShowCard(m)}>
                         <QrCode size={15} /> Показать на кассе
                       </button>
                     </div>
@@ -295,10 +198,7 @@ export default function ClientPortal({
                         {c.description && <p>{c.description}</p>}
                       </div>
                       <span className="promo-left">
-                        <CalendarDays size={13} />{" "}
-                        {left > 0
-                          ? `${left} ${plural(left, "день", "дня", "дней")}`
-                          : "сегодня"}
+                        <CalendarDays size={13} /> {left > 0 ? `${left} ${plural(left, "день", "дня", "дней")}` : "сегодня"}
                       </span>
                     </div>
                   );
@@ -322,19 +222,11 @@ export default function ClientPortal({
           <div className="stack">
             {notifications.length === 0 ? (
               <div className="card">
-                <Empty
-                  icon={<Gift size={22} />}
-                  title="Пока тихо"
-                  text="Здесь появятся начисления бонусов и акции."
-                />
+                <Empty icon={<Gift size={22} />} title="Пока тихо" text="Здесь появятся начисления бонусов и акции." />
               </div>
             ) : (
               notifications.map((n) => (
-                <button
-                  key={n.id}
-                  className={n.is_read ? "notif read" : "notif"}
-                  onClick={() => !n.is_read && markRead(n.id)}
-                >
+                <button key={n.id} className={n.is_read ? "notif read" : "notif"} onClick={() => !n.is_read && markRead(n.id)}>
                   <span className="notif-icon">
                     <Bell size={16} />
                   </span>
