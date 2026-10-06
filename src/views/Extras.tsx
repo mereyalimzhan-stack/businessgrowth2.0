@@ -19,66 +19,25 @@ import {
   Share2,
   Users,
 } from "lucide-react";
-import type {
-  BusinessNotification,
-  BusinessType,
-  BusinessUser,
-  Campaign,
-  Client,
-  Transaction,
-} from "../types";
+import type { BusinessNotification, BusinessType, BusinessUser, Campaign, Client, Transaction } from "../types";
 import { BUSINESS_TYPES } from "../types";
-import {
-  buildJoinUrl,
-  clientStatus,
-  compact,
-  formatDate,
-  money,
-} from "../utils";
+import { buildJoinUrl, clientStatus, compact, formatDate, money } from "../utils";
 import { Empty, Input, Select, Spinner, Stat } from "../components/ui";
 
-export function AnalyticsView({
-  clients,
-  transactions,
-  campaigns,
-}: {
-  clients: Client[];
-  transactions: Transaction[];
-  campaigns: Campaign[];
-}) {
-  const income = transactions
-    .filter((t) => t.type === "income")
-    .reduce((s, t) => s + t.amount, 0);
-  const expense = transactions
-    .filter((t) => t.type === "expense")
-    .reduce((s, t) => s + t.amount, 0);
+export function AnalyticsView({ clients, transactions, campaigns }: { clients: Client[]; transactions: Transaction[]; campaigns: Campaign[] }) {
+  const income = transactions.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
+  const expense = transactions.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
   const purchases = clients.reduce((s, c) => s + c.purchasesCount, 0);
   const spent = clients.reduce((s, c) => s + c.totalSpent, 0);
   const avgCheck = purchases > 0 ? Math.round(spent / purchases) : 0;
   const repeat = clients.filter((c) => c.purchasesCount >= 2).length;
-  const repeatRate = clients.length
-    ? Math.round((repeat / clients.length) * 100)
-    : 0;
-  const statuses = { VIP: 0, Активный: 0, Обычный: 0 } as Record<
-    string,
-    number
-  >;
-  clients.forEach(
-    (c) => (statuses[clientStatus(c.purchasesCount, c.totalSpent)] += 1)
-  );
-  const sleeping = clients.filter(
-    (c) =>
-      c.lastPurchaseDate &&
-      Date.now() - new Date(c.lastPurchaseDate).getTime() > 30 * 86400000
-  ).length;
+  const repeatRate = clients.length ? Math.round((repeat / clients.length) * 100) : 0;
+  const statuses = { VIP: 0, "Активный": 0, "Обычный": 0 } as Record<string, number>;
+  clients.forEach((c) => (statuses[clientStatus(c.purchasesCount, c.totalSpent)] += 1));
+  const sleeping = clients.filter((c) => c.lastPurchaseDate && Date.now() - new Date(c.lastPurchaseDate).getTime() > 30 * 86400000).length;
 
   const expenseByCat: Record<string, number> = {};
-  transactions
-    .filter((t) => t.type === "expense")
-    .forEach(
-      (t) =>
-        (expenseByCat[t.category] = (expenseByCat[t.category] || 0) + t.amount)
-    );
+  transactions.filter((t) => t.type === "expense").forEach((t) => (expenseByCat[t.category] = (expenseByCat[t.category] || 0) + t.amount));
   const cats = Object.keys(expenseByCat)
     .map((k) => ({ name: k, value: expenseByCat[k] }))
     .sort((a, b) => b.value - a.value)
@@ -108,9 +67,7 @@ export function AnalyticsView({
           ? "Проведите первые покупки — здесь появится оценка прибыльности."
           : expense > income
           ? "Расходы выше доходов. Посмотрите крупнейшие статьи затрат ниже."
-          : `Прибыль ${money(
-              income - expense
-            )}. Можно выделить около 10% на маркетинг.`,
+          : `Прибыль ${money(income - expense)}. Можно выделить около 10% на маркетинг.`,
     },
     {
       title: "Акции",
@@ -127,61 +84,24 @@ export function AnalyticsView({
   return (
     <div className="page">
       <div className="stat-grid">
-        <Stat
-          title="Средний чек"
-          value={avgCheck}
-          format={money}
-          icon={<Receipt size={18} />}
-          tone="violet"
-        />
-        <Stat
-          title="Возвращаются"
-          value={repeatRate}
-          format={(n) => `${n}%`}
-          icon={<Repeat size={18} />}
-          tone="cyan"
-        />
-        <Stat
-          title="VIP"
-          value={statuses.VIP}
-          icon={<Crown size={18} />}
-          tone="amber"
-        />
-        <Stat
-          title="Клиентов"
-          value={clients.length}
-          icon={<Users size={18} />}
-          tone="lime"
-        />
+        <Stat title="Средний чек" value={avgCheck} format={money} icon={<Receipt size={18} />} tone="violet" />
+        <Stat title="Возвращаются" value={repeatRate} format={(n) => `${n}%`} icon={<Repeat size={18} />} tone="cyan" />
+        <Stat title="VIP" value={statuses.VIP} icon={<Crown size={18} />} tone="amber" />
+        <Stat title="Клиентов" value={clients.length} icon={<Users size={18} />} tone="lime" />
       </div>
 
       <div className="two-col">
         <div className="card">
           <h2 className="card-title">Сегменты клиентов</h2>
           <div className="segment-bar">
-            <span
-              className="seg vip"
-              style={{ width: `${(statuses.VIP / total) * 100}%` }}
-            />
-            <span
-              className="seg active"
-              style={{ width: `${(statuses["Активный"] / total) * 100}%` }}
-            />
-            <span
-              className="seg basic"
-              style={{ width: `${(statuses["Обычный"] / total) * 100}%` }}
-            />
+            <span className="seg vip" style={{ width: `${(statuses.VIP / total) * 100}%` }} />
+            <span className="seg active" style={{ width: `${(statuses["Активный"] / total) * 100}%` }} />
+            <span className="seg basic" style={{ width: `${(statuses["Обычный"] / total) * 100}%` }} />
           </div>
           <div className="legend">
-            <span>
-              <i className="dot-vip" /> VIP · {statuses.VIP}
-            </span>
-            <span>
-              <i className="dot-active" /> Активные · {statuses["Активный"]}
-            </span>
-            <span>
-              <i className="dot-basic" /> Новые · {statuses["Обычный"]}
-            </span>
+            <span><i className="dot-vip" /> VIP · {statuses.VIP}</span>
+            <span><i className="dot-active" /> Активные · {statuses["Активный"]}</span>
+            <span><i className="dot-basic" /> Новые · {statuses["Обычный"]}</span>
           </div>
           <h2 className="card-title mt-lg">Куда уходят деньги</h2>
           {cats.length === 0 ? (
@@ -233,14 +153,7 @@ function loadImage(src: string) {
   });
 }
 
-function roundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number
-) {
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
   ctx.arcTo(x + w, y, x + w, y + h, r);
@@ -250,13 +163,7 @@ function roundRect(
   ctx.closePath();
 }
 
-export function QRView({
-  user,
-  onRegenerate,
-}: {
-  user: BusinessUser;
-  onRegenerate: () => Promise<void>;
-}) {
+export function QRView({ user, onRegenerate }: { user: BusinessUser; onRegenerate: () => Promise<void> }) {
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -276,11 +183,7 @@ export function QRView({
     const nav: any = navigator;
     if (nav.share) {
       try {
-        await nav.share({
-          title: user.companyName,
-          text: `Кэшбэк ${user.cashbackRate}% в «${user.companyName}»`,
-          url: qrUrl,
-        });
+        await nav.share({ title: user.companyName, text: `Кэшбэк ${user.cashbackRate}% в «${user.companyName}»`, url: qrUrl });
       } catch {}
     } else copy();
   }
@@ -291,9 +194,7 @@ export function QRView({
     setBusy(true);
     try {
       const data = new XMLSerializer().serializeToString(svg);
-      const img = await loadImage(
-        "data:image/svg+xml;charset=utf-8," + encodeURIComponent(data)
-      );
+      const img = await loadImage("data:image/svg+xml;charset=utf-8," + encodeURIComponent(data));
       const W = 1240;
       const H = 1754;
       const canvas = document.createElement("canvas");
@@ -306,14 +207,7 @@ export function QRView({
       bg.addColorStop(1, "#04232b");
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, W, H);
-      const glow = ctx.createRadialGradient(
-        W * 0.85,
-        120,
-        0,
-        W * 0.85,
-        120,
-        700
-      );
+      const glow = ctx.createRadialGradient(W * 0.85, 120, 0, W * 0.85, 120, 700);
       glow.addColorStop(0, "rgba(139,92,246,0.55)");
       glow.addColorStop(1, "rgba(139,92,246,0)");
       ctx.fillStyle = glow;
@@ -351,11 +245,7 @@ export function QRView({
       ctx.fillText("Наведите камеру телефона", W / 2, by + box + 130);
       ctx.fillStyle = "rgba(255,255,255,0.7)";
       ctx.font = "500 42px Manrope, sans-serif";
-      ctx.fillText(
-        "регистрация за 20 секунд · бонусы с каждой покупки",
-        W / 2,
-        by + box + 200
-      );
+      ctx.fillText("регистрация за 20 секунд · бонусы с каждой покупки", W / 2, by + box + 200);
 
       const a = document.createElement("a");
       a.href = canvas.toDataURL("image/png");
@@ -367,12 +257,7 @@ export function QRView({
   }
 
   async function regenerate() {
-    if (
-      !window.confirm(
-        "Создать новый QR-код? Старые распечатки перестанут работать."
-      )
-    )
-      return;
+    if (!window.confirm("Создать новый QR-код? Старые распечатки перестанут работать.")) return;
     setBusy(true);
     await onRegenerate();
     setBusy(false);
@@ -384,66 +269,32 @@ export function QRView({
         <div className="qr-stage">
           <div className="qr-ring" />
           <div className="qr-frame" ref={ref}>
-            {qrUrl ? (
-              <QRCodeSVG
-                value={qrUrl}
-                size={260}
-                level="M"
-                fgColor="#0b0d1f"
-                style={{ width: "100%", height: "auto", display: "block" }}
-              />
-            ) : (
-              <Spinner size={30} />
-            )}
+            {qrUrl ? <QRCodeSVG value={qrUrl} size={260} level="M" fgColor="#0b0d1f" style={{ width: "100%", height: "auto", display: "block" }} /> : <Spinner size={30} />}
           </div>
         </div>
         <div className="qr-info">
           <span className="eyebrow">QR для кассы и столов</span>
           <h2 className="qr-title">{user.companyName}</h2>
           <p className="muted">
-            Клиент наводит камеру, регистрируется и подтверждает почту кодом.
-            После этого он сразу в вашей программе с кэшбэком{" "}
+            Клиент наводит камеру, регистрируется и подтверждает почту по ссылке из письма. После этого он сразу в вашей программе с кэшбэком{" "}
             <b className="lime-text">{user.cashbackRate}%</b>.
           </p>
           <div className="link-box">{qrUrl}</div>
           <div className="row gap wrap">
-            <button
-              className="btn btn-primary"
-              onClick={downloadPoster}
-              disabled={busy || !qrUrl}
-            >
+            <button className="btn btn-primary" onClick={downloadPoster} disabled={busy || !qrUrl}>
               <Download size={17} /> Скачать постер
             </button>
-            <button
-              className="btn btn-secondary"
-              onClick={copy}
-              disabled={!qrUrl}
-            >
-              {copied ? <Check size={17} /> : <Copy size={17} />}{" "}
-              {copied ? "Скопировано" : "Ссылка"}
+            <button className="btn btn-secondary" onClick={copy} disabled={!qrUrl}>
+              {copied ? <Check size={17} /> : <Copy size={17} />} {copied ? "Скопировано" : "Ссылка"}
             </button>
-            <button
-              className="btn btn-secondary"
-              onClick={share}
-              disabled={!qrUrl}
-            >
+            <button className="btn btn-secondary" onClick={share} disabled={!qrUrl}>
               <Share2 size={17} />
             </button>
-            <a
-              className="btn btn-secondary"
-              href={qrUrl}
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Открыть ссылку"
-            >
+            <a className="btn btn-secondary" href={qrUrl} target="_blank" rel="noreferrer" aria-label="Открыть ссылку">
               <ExternalLink size={17} />
             </a>
           </div>
-          <button
-            className="link-inline danger-link"
-            onClick={regenerate}
-            disabled={busy}
-          >
+          <button className="link-inline danger-link" onClick={regenerate} disabled={busy}>
             <RefreshCw size={14} /> Сгенерировать новый код
           </button>
         </div>
@@ -451,21 +302,9 @@ export function QRView({
 
       <div className="steps">
         {[
-          [
-            "1",
-            "Скачайте постер",
-            "Распечатайте и поставьте у кассы или на столы.",
-          ],
-          [
-            "2",
-            "Клиент сканирует",
-            "Регистрация и подтверждение почты кодом — 20 секунд.",
-          ],
-          [
-            "3",
-            "Покупки → бонусы",
-            "В разделе «Клиенты» нажмите «Покупка» — кэшбэк начислится сам.",
-          ],
+          ["1", "Скачайте постер", "Распечатайте и поставьте у кассы или на столы."],
+          ["2", "Клиент сканирует", "Регистрация и подтверждение почты по ссылке из письма."],
+          ["3", "Покупки → бонусы", "В разделе «Клиенты» нажмите «Покупка» — кэшбэк начислится сам."],
         ].map(([n, t, d]) => (
           <div key={n} className="step">
             <span className="step-n">{n}</span>
@@ -478,20 +317,10 @@ export function QRView({
   );
 }
 
-export function ProfileView({
-  user,
-  onSave,
-  onLogout,
-}: {
-  user: BusinessUser;
-  onSave: (u: BusinessUser) => Promise<void>;
-  onLogout: () => void;
-}) {
+export function ProfileView({ user, onSave, onLogout }: { user: BusinessUser; onSave: (u: BusinessUser) => Promise<void>; onLogout: () => void }) {
   const [ownerName, setOwnerName] = useState(user.ownerName);
   const [companyName, setCompanyName] = useState(user.companyName);
-  const [businessType, setBusinessType] = useState<BusinessType>(
-    user.businessType
-  );
+  const [businessType, setBusinessType] = useState<BusinessType>(user.businessType);
   const [phone, setPhone] = useState(user.phone);
   const [cashbackRate, setCashbackRate] = useState(String(user.cashbackRate));
   const [saving, setSaving] = useState(false);
@@ -506,87 +335,31 @@ export function ProfileView({
           onSubmit={async (e) => {
             e.preventDefault();
             setSaving(true);
-            await onSave({
-              ...user,
-              ownerName: ownerName.trim(),
-              companyName: companyName.trim(),
-              businessType,
-              phone: phone.trim(),
-              cashbackRate: rate,
-            });
+            await onSave({ ...user, ownerName: ownerName.trim(), companyName: companyName.trim(), businessType, phone: phone.trim(), cashbackRate: rate });
             setSaving(false);
           }}
         >
           <div className="form-row">
-            <Input
-              label="Имя владельца"
-              value={ownerName}
-              onChange={setOwnerName}
-            />
-            <Input
-              label="Телефон"
-              type="tel"
-              value={phone}
-              onChange={setPhone}
-              required={false}
-            />
+            <Input label="Имя владельца" value={ownerName} onChange={setOwnerName} />
+            <Input label="Телефон" type="tel" value={phone} onChange={setPhone} required={false} />
           </div>
           <div className="form-row">
-            <Input
-              label="Название компании"
-              value={companyName}
-              onChange={setCompanyName}
-            />
-            <Select
-              label="Сфера"
-              value={businessType}
-              onChange={setBusinessType}
-              options={BUSINESS_TYPES}
-            />
+            <Input label="Название компании" value={companyName} onChange={setCompanyName} />
+            <Select label="Сфера" value={businessType} onChange={setBusinessType} options={BUSINESS_TYPES} />
           </div>
-          <Input
-            label="Email для входа"
-            value={user.email}
-            onChange={() => {}}
-            disabled
-            icon={<Mail size={17} />}
-          />
+          <Input label="Email для входа" value={user.email} onChange={() => {}} disabled icon={<Mail size={17} />} />
           <div className="field">
             <span className="field-label">Кэшбэк: {rate}%</span>
             <div className="range-row">
-              <input
-                type="range"
-                min={0}
-                max={30}
-                step={0.5}
-                value={rate}
-                onChange={(e) => setCashbackRate(e.target.value)}
-                className="range"
-                style={{ ["--p" as any]: `${(rate / 30) * 100}%` }}
-              />
+              <input type="range" min={0} max={30} step={0.5} value={rate} onChange={(e) => setCashbackRate(e.target.value)} className="range" style={{ ["--p" as any]: `${(rate / 30) * 100}%` }} />
               <span className="input-wrap range-num">
-                <input
-                  className="input"
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={0.5}
-                  value={cashbackRate}
-                  onChange={(e) => setCashbackRate(e.target.value)}
-                />
+                <input className="input" type="number" min={0} max={100} step={0.5} value={cashbackRate} onChange={(e) => setCashbackRate(e.target.value)} />
                 <Percent size={15} />
               </span>
             </div>
-            <span className="field-hint">
-              С покупки на 10 000 ₸ клиент получит {money((10000 * rate) / 100)}{" "}
-              бонусами.
-            </span>
+            <span className="field-hint">С покупки на 10 000 ₸ клиент получит {money((10000 * rate) / 100)} бонусами.</span>
           </div>
-          <button
-            type="submit"
-            className="btn btn-primary btn-lg"
-            disabled={saving}
-          >
+          <button type="submit" className="btn btn-primary btn-lg" disabled={saving}>
             {saving ? <Spinner /> : "Сохранить изменения"}
           </button>
         </form>
@@ -596,8 +369,7 @@ export function ProfileView({
         <p className="muted">текущий кэшбэк</p>
         <div className="divider" />
         <p className="muted small">
-          Смена процента действует на новые покупки. Уже начисленные бонусы не
-          меняются.
+          Смена процента действует на новые покупки. Уже начисленные бонусы не меняются.
         </p>
         <button className="btn btn-secondary btn-block" onClick={onLogout}>
           <LogOut size={17} /> Выйти из аккаунта
@@ -628,19 +400,11 @@ export function NotificationsView({
         )}
       </div>
       {notifications.length === 0 ? (
-        <Empty
-          icon={<BellOff size={22} />}
-          title="Уведомлений нет"
-          text="Здесь появятся новые клиенты и важные события."
-        />
+        <Empty icon={<BellOff size={22} />} title="Уведомлений нет" text="Здесь появятся новые клиенты и важные события." />
       ) : (
         <div className="stack">
           {notifications.map((n) => (
-            <button
-              key={n.id}
-              className={n.isRead ? "notif read" : "notif"}
-              onClick={() => !n.isRead && onMarkRead(n.id)}
-            >
+            <button key={n.id} className={n.isRead ? "notif read" : "notif"} onClick={() => !n.isRead && onMarkRead(n.id)}>
               <span className="notif-icon">
                 <Bell size={16} />
               </span>
