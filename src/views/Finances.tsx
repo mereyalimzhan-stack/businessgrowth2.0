@@ -1,22 +1,8 @@
 import React, { useState } from "react";
-import {
-  Plus,
-  Receipt,
-  Trash2,
-  TrendingDown,
-  TrendingUp,
-  Wallet,
-} from "lucide-react";
+import { Plus, Receipt, Trash2, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import type { NewTransaction, Transaction, TransactionType } from "../types";
 import { compact, dateNow } from "../utils";
-import {
-  Empty,
-  Input,
-  Modal,
-  Segmented,
-  Spinner,
-  Stat,
-} from "../components/ui";
+import { Empty, Input, Modal, Segmented, Spinner, Stat } from "../components/ui";
 import { TxRow } from "./Home";
 
 const CATEGORIES: Record<TransactionType, string[]> = {
@@ -41,52 +27,22 @@ export default function FinancesView({
 }) {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<"all" | TransactionType>("all");
-  const list = transactions.filter(
-    (t) => filter === "all" || t.type === filter
-  );
-  const margin =
-    totalIncome > 0 ? Math.round((netProfit / totalIncome) * 100) : 0;
+  const list = transactions.filter((t) => filter === "all" || t.type === filter);
+  const margin = totalIncome > 0 ? Math.round((netProfit / totalIncome) * 100) : 0;
 
   return (
     <div className="page">
       <div className="stat-grid">
-        <Stat
-          title="Доходы"
-          value={totalIncome}
-          format={compact}
-          icon={<TrendingUp size={18} />}
-          tone="lime"
-        />
-        <Stat
-          title="Расходы"
-          value={totalExpense}
-          format={compact}
-          icon={<TrendingDown size={18} />}
-          tone="pink"
-        />
-        <Stat
-          title="Прибыль"
-          value={netProfit}
-          format={compact}
-          icon={<Wallet size={18} />}
-          tone={netProfit >= 0 ? "violet" : "red"}
-          hint={totalIncome > 0 ? `маржа ${margin}%` : undefined}
-        />
-        <Stat
-          title="Операций"
-          value={transactions.length}
-          icon={<Receipt size={18} />}
-          tone="cyan"
-        />
+        <Stat title="Доходы" value={totalIncome} format={compact} icon={<TrendingUp size={18} />} tone="lime" />
+        <Stat title="Расходы" value={totalExpense} format={compact} icon={<TrendingDown size={18} />} tone="pink" />
+        <Stat title="Прибыль" value={netProfit} format={compact} icon={<Wallet size={18} />} tone={netProfit >= 0 ? "violet" : "red"} hint={totalIncome > 0 ? `маржа ${margin}%` : undefined} />
+        <Stat title="Операций" value={transactions.length} icon={<Receipt size={18} />} tone="cyan" />
       </div>
 
       <div className="card">
         <div className="card-head">
           <h2 className="card-title">Операции</h2>
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={() => setOpen(true)}
-          >
+          <button className="btn btn-primary btn-sm" onClick={() => setOpen(true)}>
             <Plus size={16} /> Добавить
           </button>
         </div>
@@ -100,11 +56,7 @@ export default function FinancesView({
           ]}
         />
         {list.length === 0 ? (
-          <Empty
-            icon={<Receipt size={22} />}
-            title="Операций нет"
-            text="Добавьте доход или расход — прибыль посчитается сама."
-          />
+          <Empty icon={<Receipt size={22} />} title="Операций нет" text="Добавьте доход или расход — прибыль посчитается сама." />
         ) : (
           <div className="list mt">
             {list.map((t) => (
@@ -116,8 +68,7 @@ export default function FinancesView({
                     className="icon-btn danger sm"
                     aria-label="Удалить операцию"
                     onClick={() => {
-                      if (window.confirm("Удалить операцию?"))
-                        onDeleteTransaction(t.id);
+                      if (window.confirm("Удалить операцию?")) onDeleteTransaction(t.id);
                     }}
                   >
                     <Trash2 size={14} />
@@ -129,23 +80,12 @@ export default function FinancesView({
         )}
       </div>
 
-      {open && (
-        <TransactionModal
-          onClose={() => setOpen(false)}
-          onSubmit={onAddTransaction}
-        />
-      )}
+      {open && <TransactionModal onClose={() => setOpen(false)} onSubmit={onAddTransaction} />}
     </div>
   );
 }
 
-function TransactionModal({
-  onClose,
-  onSubmit,
-}: {
-  onClose: () => void;
-  onSubmit: (d: NewTransaction) => Promise<void>;
-}) {
+function TransactionModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (d: NewTransaction) => Promise<void> }) {
   const [type, setType] = useState<TransactionType>("income");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("Продажи");
@@ -161,13 +101,7 @@ function TransactionModal({
           const value = Number(amount.replace(",", "."));
           if (!value || value <= 0) return;
           setSaving(true);
-          await onSubmit({
-            type,
-            amount: value,
-            category,
-            date,
-            description: description.trim(),
-          });
+          await onSubmit({ type, amount: value, category, date, description: description.trim() });
           setSaving(false);
           onClose();
         }}
@@ -184,24 +118,12 @@ function TransactionModal({
           ]}
         />
         <div className="amount-input">
-          <input
-            autoFocus
-            inputMode="decimal"
-            value={amount}
-            placeholder="0"
-            onChange={(e) => setAmount(e.target.value.replace(/[^\d.,]/g, ""))}
-            aria-label="Сумма"
-          />
+          <input autoFocus inputMode="decimal" value={amount} placeholder="0" onChange={(e) => setAmount(e.target.value.replace(/[^\d.,]/g, ""))} aria-label="Сумма" />
           <span>₸</span>
         </div>
         <div className="chips center">
           {CATEGORIES[type].map((c) => (
-            <button
-              key={c}
-              type="button"
-              className={category === c ? "chip active" : "chip"}
-              onClick={() => setCategory(c)}
-            >
+            <button key={c} type="button" className={category === c ? "chip active" : "chip"} onClick={() => setCategory(c)}>
               {c}
             </button>
           ))}
@@ -210,22 +132,12 @@ function TransactionModal({
           <Input label="Категория" value={category} onChange={setCategory} />
           <Input label="Дата" type="date" value={date} onChange={setDate} />
         </div>
-        <Input
-          label="Комментарий"
-          required={false}
-          value={description}
-          onChange={setDescription}
-          placeholder="Например: выручка за смену"
-        />
+        <Input label="Комментарий" required={false} value={description} onChange={setDescription} placeholder="Например: выручка за смену" />
         <div className="modal-actions">
           <button type="button" className="btn btn-secondary" onClick={onClose}>
             Отмена
           </button>
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={saving || !amount}
-          >
+          <button type="submit" className="btn btn-primary" disabled={saving || !amount}>
             {saving ? <Spinner /> : "Добавить"}
           </button>
         </div>
